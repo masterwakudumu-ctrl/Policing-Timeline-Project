@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Policing History Timeline — Interactive (Thumbnails)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif; }
+    .glow { box-shadow: 0 0 0 0 rgba(34,211,238,0.6); animation: pulse 2.2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34,211,238,0.55) } 70% { box-shadow: 0 0 0 16px rgba(34,211,238,0) } 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0) } }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .backdrop { background: rgba(2,6,23,0.6); backdrop-filter: blur(6px); }
+    .focus-ring:focus { outline: none; box-shadow: 0 0 0 3px rgba(34,211,238,0.5); }
+    /* Thumbnails & play overlay */
+    .thumb-wrap { position: relative; display:inline-block; overflow: hidden; border-radius: .5rem; }
+    .thumb-wrap img { display:block; width:100%; height:auto; object-fit:cover; }
+    .thumb-play { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:999px; background:rgba(2,6,23,0.6); display:flex; align-items:center; justify-content:center; }
+    .thumb-play svg { width:22px; height:22px; }
+    .thumb-small { width:120px; height:70px; }
+    .thumb-medium { width:240px; height:135px; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
+  <div aria-hidden="true" class="pointer-events-none fixed inset-0">
+    <div class="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl"></div>
+    <div class="absolute -bottom-20 -right-32 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl"></div>
+  </div>
+
+  <header class="relative">
+    <div class="max-w-7xl mx-auto px-6 pt-10 pb-6">
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        <div>
+          <div class="inline-flex items-center gap-2 mb-4">
+            <svg width="28" height="28" viewBox="0 0 24 24" class="text-cyan-400"><path fill="currentColor" d="M12 2l7 3v6c0 5-3.5 9.74-7 11c-3.5-1.26-7-6-7-11V5l7-3z"/></svg>
+            <span class="uppercase tracking-wider text-cyan-300/90 text-xs font-semibold">Interactive Coursework</span>
+          </div>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight">Policing History Timeline</h1>
+          <p class="mt-3 max-w-2xl text-slate-300">Explore key moments that shaped law enforcement—now with video thumbnails and pin images for event media. Click any thumbnail to open the video in a new tab.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button id="printBtn" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 px-4 py-2 text-sm font-semibold">Print</button>
+          <button id="resetBtn" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 px-4 py-2 text-sm font-semibold">Reset</button>
+          <button id="addBtn" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900">Add your event</button>
+        </div>
+      </div>
+
+      <div class="mt-8 grid lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5">
+          <label for="search" class="block text-sm font-semibold mb-2 text-slate-300">Search title, location, or description</label>
+          <div class="relative">
+            <input id="search" type="text" placeholder="Try: Miranda, body camera, 1829, NYPD..." class="w-full rounded-xl bg-slate-800/70 border border-slate-700/60 px-4 py-3 pr-10 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"/>
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="m21 20.3l-5.4-5.4A7.7 7.7 0 0 0 18 10.3A7.7 7.7 0 1 0 10.3 18a7.7 7.7 0 0 0 4.6-1.6l5.4 5.3zM4.6 10.3a5.7 5.7 0 1 1 11.4 0a5.7 5.7 0 0 1-11.4 0"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4">
+          <p class="text-sm font-semibold mb-2 text-slate-300">Categories</p>
+          <div id="categoryChips" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <div class="lg:col-span-3">
+          <div class="flex items-end justify-between gap-3">
+            <div class="flex-1">
+              <p class="text-sm font-semibold mb-2 text-slate-300">Era</p>
+              <div id="eraChips" class="flex flex-wrap gap-2"></div>
+            </div>
+            <div>
+              <label for="sort" class="block text-sm font-semibold mb-2 text-slate-300">Sort</label>
+              <select id="sort" class="rounded-lg bg-slate-800/70 border border-slate-700/60 px-3 py-2">
+                <option value="asc">Oldest → Newest</option>
+                <option value="desc">Newest → Oldest</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 text-xs text-slate-400">Note: Videos open in a new tab for viewing; thumbnails are linked to the original video pages.</div>
+    </div>
+  </header>
+
+  <main class="relative">
+    <section class="max-w-7xl mx-auto px-6">
+      <div class="rounded-2xl border border-slate-800/70 bg-slate-900/40 p-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold">Timeline</h2>
+          <div class="flex items-center gap-2 text-sm text-slate-300">
+            <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-cyan-400/90 inline-block"></span>Selected</span>
+            <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-amber-400/90 inline-block"></span>Legal</span>
+            <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-emerald-400/90 inline-block"></span>Organization</span>
+            <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-fuchsia-400/90 inline-block"></span>Policy/Reform</span>
+            <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-sky-400/90 inline-block"></span>Technology</span>
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto no-scrollbar">
+          <div id="timelineTrack" class="relative min-w-[900px] w-full h-40">
+            <div class="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1.5 bg-gradient-to-r from-slate-700/70 via-slate-600/60 to-slate-700/70 rounded-full"></div>
+            <div id="ticks" class="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1.5"></div>
+            <div id="markers" class="absolute inset-0"></div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex items-center justify-between">
+          <button id="prevBtn" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 px-4 py-2 text-sm font-semibold">Prev</button>
+          <div class="text-xs text-slate-400" id="visibleCount"></div>
+          <button id="nextBtn" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 px-4 py-2 text-sm font-semibold">Next</button>
+        </div>
+      </div>
+
+      <div id="detailCard" class="mt-8 rounded-2xl border border-slate-800/70 bg-slate-900/50 p-6"></div>
+
+      <div class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-bold">All matching events</h3>
+          <span id="resultsCount" class="text-sm text-slate-400"></span>
+        </div>
+        <div id="cards" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      </div>
+
+      <div class="mt-10 rounded-2xl border border-slate-800/70 bg-slate-900/40 p-6">
+        <h3 class="text-base font-bold">Further viewing (provided)</h3>
+        <p class="mt-1 text-sm text-slate-300">Click any thumbnail to open the video in a new tab.</p>
+        <div id="providedVideos" class="mt-3 flex flex-wrap gap-3"></div>
+      </div>
+
+      <section class="mt-10 rounded-2xl border border-slate-800/70 bg-slate-900/50 p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-base font-bold">References</h3>
+            <p class="mt-1 text-sm text-slate-300">At least 3 included. Click to copy all.</p>
+          </div>
+          <button id="copyCitations" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900">Copy all</button>
+        </div>
+        <ol id="references" class="mt-4 list-decimal pl-5 space-y-2 text-sm leading-relaxed text-slate-200"></ol>
+      </section>
+
+      <section class="mt-10 mb-16 rounded-2xl border border-slate-800/70 bg-slate-900/40 p-6">
+        <h3 class="text-base font-bold">Submission tip</h3>
+        <p class="mt-2 text-sm text-slate-300">To turn this into a shareable link: click “Use in a design” in Canva, then “Publish website” in the Canva editor. Paste that link into your Word document as required.</p>
+      </section>
+    </section>
+  </main>
+
+  <div id="modal" class="hidden fixed inset-0 z-50 items-center justify-center p-6">
+    <div class="absolute inset-0 backdrop"></div>
+    <div class="relative w-full max-w-2xl rounded-2xl border border-slate-800/70 bg-slate-950 p-6">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-lg font-bold">Add your own event</h3>
+          <p class="text-sm text-slate-400 mt-1">Perfect for the independent research requirement. Your event is stored in your browser.</p>
+        </div>
+        <button id="closeModal" class="focus-ring rounded-lg p-2 hover:bg-slate-800/60">Close</button>
+      </div>
+
+      <form id="eventForm" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label class="block text-sm font-semibold mb-1">Title</label><input name="title" required class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2" placeholder="e.g., First Community Oversight Board formed"/></div>
+        <div><label class="block text-sm font-semibold mb-1">Date</label><input name="date" type="date" required class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2"/></div>
+        <div><label class="block text-sm font-semibold mb-1">Location</label><input name="location" class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2" placeholder="City, Country"/></div>
+        <div><label class="block text-sm font-semibold mb-1">Category</label><select name="category" class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2"><option value="organization">Organization</option><option value="legal">Legal</option><option value="policy">Policy/Reform</option><option value="reform">Reform/Report</option><option value="technology">Technology/Research</option></select></div>
+        <div class="sm:col-span-2"><label class="block text-sm font-semibold mb-1">Summary</label><textarea name="summary" rows="2" class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2" placeholder="What happened? Why it matters?"></textarea></div>
+        <div class="sm:col-span-2"><label class="block text-sm font-semibold mb-1">Significance</label><textarea name="significance" rows="2" class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2" placeholder="Impact on policing practice or policy"></textarea></div>
+        <div class="sm:col-span-2"><label class="block text-sm font-semibold mb-1">Source (URL)</label><input name="source" class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2" placeholder="https://..."/></div>
+        <div class="sm:col-span-2"><label class="block text-sm font-semibold mb-1">Optional video link (YouTube)</label><input name="media" class="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2" placeholder="https://www.youtube.com/watch?v=..."/></div>
+        <div class="sm:col-span-2 flex items-center justify-end gap-3 mt-2"><button type="button" id="clearForm" class="focus-ring rounded-lg bg-slate-800/70 hover:bg-slate-800 px-4 py-2 text-sm">Clear</button><button type="submit" class="focus-ring rounded-lg bg-cyan-500/90 hover:bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900">Add event</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Helper: Extract YouTube ID from URL (robust-ish)
+    function getYouTubeID(url) {
+      if (!url) return null;
+      try {
+        const u = new URL(url.startsWith('http') ? url : 'https://'+url);
+        if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+        if (u.searchParams && u.searchParams.get('v')) return u.searchParams.get('v');
+        // sometimes url like /watch?v= or /embed/ID
+        const p = u.pathname.split('/');
+        const embedIdx = p.indexOf('embed');
+        if (embedIdx >= 0 && p[embedIdx+1]) return p[embedIdx+1];
+        // fallback last segment
+        return p.pop() || null;
+      } catch { return null; }
+    }
+
+    // Build thumbnail URL
+    function ytThumb(url, size='hqdefault'){
+      const id = getYouTubeID(url); if (!id) return null;
+      return `https://img.youtube.com/vi/${id}/${size}.jpg`;
+    }
+
+    // Data: core events (same as before) with media fields where present
+    const baseEvents = [
+      { id: 'e1829', title: 'Metropolitan Police Act', date: '1829-09-29', location: 'London, England', category: 'organization', summary: 'Parliament creates the Metropolitan Police under Sir Robert Peel, forming one of the first modern, uniformed, publicly funded police forces.', significance: 'Introduced principles of preventive patrol and accountability, influencing police models worldwide.', sources: [{ label: 'UK Legislation', url: 'https://www.legislation.gov.uk/ukpga/Geo4/10/44/contents' }] },
+      { id: 'e1838', title: 'First U.S. Modern Police Department', date: '1838-05-01', location: 'Boston, Massachusetts, USA', category: 'organization', summary: 'Boston establishes a city-run, salaried force often cited as the first modern U.S. police department.', significance: 'Marks the shift from watchmen to organized municipal policing in the United States.', sources: [{ label: 'Boston Police — History', url: 'https://bpdnews.com/history' }] },
+      { id: 'e1845', title: 'NYPD Established', date: '1845-05-23', location: 'New York City, USA', category: 'organization', summary: 'New York City creates the NYPD to centralize policing across rapidly growing urban neighborhoods.', significance: 'Becomes a model for large-scale, hierarchical police administration.', sources: [{ label: 'NYPD — History', url: 'https://www.nyc.gov/site/nypd/about/history/history.page' }] },
+      { id: 'e1929', title: 'Wickersham Commission', date: '1929-05-20', location: 'United States', category: 'reform', summary: 'Federal inquiry investigates law enforcement practices nationwide (reports published 1931).', significance: 'Documents issues like coercive interrogations and recommends professionalization and training reforms.', sources: [{ label: 'National Archives overview', url: 'https://prologue.blogs.archives.gov/2013/01/17/the-wickersham-commission/' }] },
+      { id: 'e1966', title: 'Miranda v. Arizona', date: '1966-06-13', location: 'U.S. Supreme Court', category: 'legal', summary: 'Landmark ruling requires informing suspects of rights to silence and counsel during custodial interrogation.', significance: 'Establishes Miranda warnings, reshaping interrogation practices and procedural safeguards.', sources: [{ label: 'Oyez — Miranda', url: 'https://www.oyez.org/cases/1965/759' }] },
+      { id: 'e1968', title: 'Terry v. Ohio', date: '1968-06-10', location: 'U.S. Supreme Court', category: 'legal', summary: 'Allows brief investigatory stops and frisks based on reasonable suspicion rather than probable cause.', significance: 'Defines stop-and-frisk doctrine and standards for street encounters.', sources: [{ label: 'Oyez — Terry', url: 'https://www.oyez.org/cases/1967/67' }] },
+      { id: 'e1994', title: 'Violent Crime Control Act — Pattern-or-Practice', date: '1994-09-13', location: 'United States', category: 'policy', summary: 'Creates federal authority to address patterns of misconduct in law enforcement agencies.', significance: 'Enables DOJ civil investigations and consent decrees to drive systemic reforms.', sources: [{ label: 'DOJ — Law Enforcement Misconduct', url: 'https://www.justice.gov/crt/law-enforcement-misconduct' }] },
+      { id: 'e2002', title: 'Post-9/11 Reorganization', date: '2002-11-25', location: 'United States', category: 'policy', summary: 'Creation of the Department of Homeland Security and expansion of intelligence-sharing.', significance: 'Shifts local–federal coordination, information fusion, and counterterrorism roles in policing.', sources: [{ label: 'DHS — Creation of DHS', url: 'https://www.dhs.gov/creation-department-homeland-security' }] },
+      { id: 'e2013', title: 'Rialto Body-Worn Camera Study', date: '2013-04-01', location: 'Rialto, California, USA', category: 'technology', summary: 'A randomized trial examines impacts of body cameras on use of force and complaints.', significance: 'Findings support adoption of body-worn cameras nationwide (independent research item).', sources: [{ label: 'Ariel et al. (2015)', url: 'https://link.springer.com/article/10.1007/s10940-014-9236-3' }], media: 'https://www.youtube.com/results?search_query=police+body+worn+camera+study' },
+      { id: 'e2014', title: 'Ferguson & DOJ Findings', date: '2014-08-09', location: 'Ferguson, Missouri, USA', category: 'reform', summary: 'After the shooting of Michael Brown, DOJ investigation identifies unconstitutional practices.', significance: 'Catalyzes national scrutiny of policing, prompting policy changes and consent decree efforts.', sources: [{ label: 'DOJ — Ferguson Report', url: 'https://www.justice.gov/opa/pr/justice-department-announces-findings-investigation-ferguson-police-department' }] },
+      { id: 'e2015', title: '21st Century Policing Task Force', date: '2015-05-18', location: 'United States', category: 'reform', summary: 'Federal task force issues pillars on building trust, policy, training, and technology.', significance: 'Becomes a roadmap for agencies pursuing transparency and legitimacy.', sources: [{ label: 'COPS — Final Report', url: 'https://cops.usdoj.gov/pdf/taskforce/taskforce_finalreport.pdf' }] },
+      { id: 'e2022', title: 'Executive Order 14074', date: '2022-05-25', location: 'United States', category: 'policy', summary: 'Order advances accountable policing, data, and use-of-force standards in federal agencies.', significance: 'Encourages nationwide best practices and improves transparency and oversight.', sources: [{ label: 'White House — Fact Sheet', url: 'https://www.whitehouse.gov/briefing-room/statements-releases/2022/05/25/fact-sheet-president-biden-to-sign-historic-executive-order-to-advance-effective-accountable-policing-and-strengthen-public-safety/' }] }
+    ];
+
+    const categoryInfo = { organization: { label: 'Organization', color: 'emerald', dot: 'bg-emerald-400/90' }, legal: { label: 'Legal', color: 'amber', dot: 'bg-amber-400/90' }, policy: { label: 'Policy/Reform', color: 'fuchsia', dot: 'bg-fuchsia-400/90' }, reform: { label: 'Reform/Report', color: 'fuchsia', dot: 'bg-fuchsia-400/90' }, technology: { label: 'Technology/Research', color: 'sky', dot: 'bg-sky-400/90' } };
+
+    const eras = [ { id: 'early', label: 'Early (pre‑1900)', start: 1700, end: 1899 }, { id: 'prof', label: 'Professionalization (1900‑1959)', start: 1900, end: 1959 }, { id: 'civil', label: 'Civil Rights to 1999', start: 1960, end: 1999 }, { id: 'modern', label: 'Modern (2000‑present)', start: 2000, end: 2100 } ];
+
+    const LS_KEY = 'policing_timeline_user_events_v1';
+    const state = { events: [], filtered: [], selectedId: null, filters: { categories: new Set(Object.keys(categoryInfo)), eras: new Set(eras.map(e => e.id)), query: '', sort: 'asc' } };
+
+    // DOM refs
+    const categoryChips = document.getElementById('categoryChips');
+    const eraChips = document.getElementById('eraChips');
+    const searchInput = document.getElementById('search');
+    const sortSelect = document.getElementById('sort');
+    const resetBtn = document.getElementById('resetBtn');
+    const printBtn = document.getElementById('printBtn');
+
+    const track = document.getElementById('timelineTrack');
+    const ticksEl = document.getElementById('ticks');
+    const markersEl = document.getElementById('markers');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const visibleCount = document.getElementById('visibleCount');
+
+    const detailCard = document.getElementById('detailCard');
+    const cards = document.getElementById('cards');
+    const resultsCount = document.getElementById('resultsCount');
+
+    const refsOl = document.getElementById('references');
+    const copyCitationsBtn = document.getElementById('copyCitations');
+    const providedVideosWrap = document.getElementById('providedVideos');
+
+    const modal = document.getElementById('modal');
+    const addBtn = document.getElementById('addBtn');
+    const closeModal = document.getElementById('closeModal');
+    const eventForm = document.getElementById('eventForm');
+    const clearForm = document.getElementById('clearForm');
+
+    const parseYear = d => new Date(d).getFullYear();
+    const fmtDate = d => { const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); };
+
+    function loadUserEvents() { try { const raw = localStorage.getItem(LS_KEY); if (!raw) return []; const arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; } catch { return []; } }
+    function saveUserEvents(evts) { try { localStorage.setItem(LS_KEY, JSON.stringify(evts)); } catch {} }
+
+    function init() {
+      const userEvents = loadUserEvents();
+      state.events = [...baseEvents, ...userEvents];
+      renderCategoryChips(); renderEraChips(); applyFilters();
+      searchInput.addEventListener('input', (e) => { state.filters.query = e.target.value.trim().toLowerCase(); applyFilters(); });
+      sortSelect.addEventListener('change', (e) => { state.filters.sort = e.target.value; applyFilters(); });
+      resetBtn.addEventListener('click', () => resetAll());
+      printBtn.addEventListener('click', () => window.print());
+      prevBtn.addEventListener('click', () => navSelect(-1)); nextBtn.addEventListener('click', () => navSelect(1));
+      addBtn.addEventListener('click', () => openModal()); closeModal.addEventListener('click', () => closeModalFn()); clearForm.addEventListener('click', () => { eventForm.reset(); }); eventForm.addEventListener('submit', onAddEvent);
+      copyCitationsBtn.addEventListener('click', copyCitations); renderReferences(); renderProvidedVideos();
+    }
+
+    function resetAll() { state.filters.categories = new Set(Object.keys(categoryInfo)); state.filters.eras = new Set(eras.map(e => e.id)); state.filters.query = ''; state.filters.sort = 'asc'; searchInput.value = ''; sortSelect.value = 'asc'; renderCategoryChips(); renderEraChips(); applyFilters(); }
+
+    function renderCategoryChips() { categoryChips.innerHTML = ''; Object.entries(categoryInfo).forEach(([key, info]) => { const active = state.filters.categories.has(key); const btn = document.createElement('button'); btn.type = 'button'; btn.className = `focus-ring inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border ${active ? 'bg-slate-800/80 border-slate-700 text-slate-100' : 'bg-slate-900/40 border-slate-800 text-slate-400'}`; btn.innerHTML = `${iconForCategory(key, 14)} ${info.label}`; btn.addEventListener('click', () => { if (active && state.filters.categories.size === 1) return; if (state.filters.categories.has(key)) state.filters.categories.delete(key); else state.filters.categories.add(key); renderCategoryChips(); applyFilters(); }); categoryChips.appendChild(btn); }); }
+    function renderEraChips() { eraChips.innerHTML = ''; eras.forEach(e => { const active = state.filters.eras.has(e.id); const btn = document.createElement('button'); btn.type = 'button'; btn.className = `focus-ring rounded-full px-3 py-1.5 text-xs font-semibold border ${active ? 'bg-slate-800/80 border-slate-700 text-slate-100' : 'bg-slate-900/40 border-slate-800 text-slate-400'}`; btn.textContent = e.label; btn.addEventListener('click', () => { if (active && state.filters.eras.size === 1) return; if (state.filters.eras.has(e.id)) state.filters.eras.delete(e.id); else state.filters.eras.add(e.id); renderEraChips(); applyFilters(); }); eraChips.appendChild(btn); }); }
+
+    function inActiveEras(year) { for (const e of eras) { if (year >= e.start && year <= e.end) return state.filters.eras.has(e.id); } return false; }
+
+    function applyFilters() {
+      const q = state.filters.query; const cats = state.filters.categories;
+      let arr = state.events.filter(ev => { const year = parseYear(ev.date); const matchCat = cats.has(ev.category); const matchEra = inActiveEras(year); const matchQ = !q || [ ev.title, ev.location, ev.summary, ev.significance ].filter(Boolean).some(t => t.toLowerCase().includes(q)); return matchCat && matchEra && matchQ; });
+      arr.sort((a,b)=> state.filters.sort==='asc' ? new Date(a.date)-new Date(b.date) : new Date(b.date)-new Date(a.date));
+      state.filtered = arr; if (!state.selectedId || !state.filtered.find(e=>e.id===state.selectedId)) state.selectedId = state.filtered[0]?.id || null; renderTimeline(); renderDetail(); renderCards(); resultsCount.textContent = `${state.filtered.length} event${state.filtered.length===1 ? '' : 's'}`; visibleCount.textContent = state.filtered.length ? `Showing ${state.filtered.length} on the track` : 'No results — adjust filters';
+    }
+
+    function getRange() { const years = (state.filtered.length ? state.filtered : state.events).map(e => parseYear(e.date)); const min = Math.min(...years, 1800); const max = Math.max(...years, new Date().getFullYear()); return { min: min - 5, max: max + 5 }; }
+
+    function renderTimeline() {
+      ticksEl.innerHTML = ''; markersEl.innerHTML = '';
+      const { min, max } = getRange();
+      const leftPad = 16; const rightPad = 16; const trackRect = track.getBoundingClientRect(); const width = trackRect.width - leftPad - rightPad; const toX = year => { const ratio = (year - min) / (max - min || 1); return 16 + ratio * width; };
+      const firstDecade = Math.ceil(min / 10) * 10;
+      for (let y = firstDecade; y <= max; y += 10) { const x = toX(y); const tick = document.createElement('div'); tick.className = 'absolute -translate-x-1/2'; tick.style.left = `${x}px`; tick.style.top = 'calc(50% - 10px)'; tick.innerHTML = `<div class="h-5 w-[2px] bg-slate-600/70"></div><div class="text-[10px] text-slate-400 mt-1 text-center">${y}</div>`; ticksEl.appendChild(tick); }
+
+      (state.filtered.length ? state.filtered : state.events).forEach(ev => {
+        const year = parseYear(ev.date); const x = toX(year); const catDot = categoryInfo[ev.category]?.dot || 'bg-slate-400'; const isSelected = state.selectedId === ev.id;
+        const marker = document.createElement('button'); marker.type='button'; marker.className = `group absolute -translate-x-1/2 -translate-y-1/2 focus-ring`; marker.style.left = `${x}px`; marker.style.top = '50%'; marker.setAttribute('aria-label', `${ev.title} (${year})`);
+        marker.innerHTML = `<div class="relative"><div class="h-4 w-4 rounded-full border border-slate-900 ${isSelected ? 'bg-cyan-400 glow' : catDot}"></div><div class="absolute left-1/2 -translate-x-1/2 mt-3 whitespace-nowrap text-xs ${isSelected ? 'text-slate-100' : 'text-slate-400'} opacity-0 group-hover:opacity-100 transition">${year}</div></div>`;
+        marker.addEventListener('click', ()=>{ state.selectedId = ev.id; renderTimeline(); renderDetail(true); marker.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); });
+        markersEl.appendChild(marker);
+      });
+    }
+
+    function iconForCategory(cat,size=18){ const s = `width="${size}" height="${size}"`; switch(cat){ case 'legal': return `<svg ${s} viewBox="0 0 24 24" class="text-amber-300"><path fill="currentColor" d="M12 3L1 9l11 6l9-4.91V17h2V9z"/><path fill="currentColor" d="M23 20H1v2h22z"/></svg>`; case 'organization': return `<svg ${s} viewBox="0 0 24 24" class="text-emerald-300"><path fill="currentColor" d="M12 2l7 3v6c0 5-3.5 9.74-7 11c-3.5-1.26-7-6-7-11V5l7-3z"/></svg>`; case 'policy': return `<svg ${s} viewBox="0 0 24 24" class="text-fuchsia-300"><path fill="currentColor" d="M17 3H7a2 2 0 0 0-2 2v14l7-3l7 3V5a2 2 0 0 0-2-2"/></svg>`; case 'reform': return `<svg ${s} viewBox="0 0 24 24" class="text-fuchsia-300"><path fill="currentColor" d="M12 22q-2.05-.75-3.525-2.225Q7 18.3 6.25 16.25T5.5 12V5l6-3l6 3v7q0 2.3-.75 4.35T15.525 19.775Q14.05 21.25 12 22"/></svg>`; case 'technology': return `<svg ${s} viewBox="0 0 24 24" class="text-sky-300"><path fill="currentColor" d="M12 2a1 1 0 0 1 1 1v1.07a8 8 0 0 1 6.93 6.93H21a1 1 0 0 1 1 1v0a1 1 0 0 1-1 1h-1.07A8 8 0 0 1 13 19.93V21a1 1 0 0 1-1 1h0a1 1 0 0 1-1-1v-1.07A8 8 0 0 1 4.07 13H3a1 1 0 0 1-1-1v0a1 1 0 0 1 1-1h1.07A8 8 0 0 1 11 4.07V3a1 1 0 0 1 1-1Z"/></svg>`; default: return `<svg ${s} viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`; } }
+
+    function renderDetail(scrollInto=false){ const ev = state.events.find(e=>e.id===state.selectedId); if(!ev){ detailCard.innerHTML=`<p class="text-slate-400">Select a marker to see details.</p>`; return; } const year = parseYear(ev.date); const cat = categoryInfo[ev.category]?.label || ev.category; const dot = categoryInfo[ev.category]?.dot || 'bg-slate-400'; const thumb = ytThumb(ev.media) || null;
+      detailCard.innerHTML = `
+        <div class="flex flex-col md:flex-row gap-5">
+          <div class="flex-shrink-0">
+            <div class="h-16 w-16 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-center">${iconForCategory(ev.category,28)}</div>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full ${dot} inline-block"></span>${cat}</span>
+              <span>•</span>
+              <span>${fmtDate(ev.date)} (${year})</span>
+              ${ev.location ? `<span>•</span><span>${ev.location}</span>` : ''}
+            </div>
+            <h3 class="mt-1 text-xl font-bold">${ev.title}</h3>
+            <p class="mt-2 text-slate-200">${ev.summary || ''}</p>
+            <div class="mt-3 p-3 rounded-lg bg-slate-900/60 border border-slate-800"><p class="text-sm text-slate-300"><span class="font-semibold text-slate-200">Significance:</span> ${ev.significance || ''}</p></div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              ${thumb ? `<a target="_blank" rel="noopener noreferrer" href="${ev.media}" class="thumb-wrap thumb-medium"><img loading="lazy" src="${thumb}" alt="Video thumbnail"><span class="thumb-play"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg></span></a>` : ''}
+              ${ev.media ? `<a target="_blank" rel="noopener noreferrer" href="${ev.media}" class="inline-flex items-center gap-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 px-3 py-2 text-sm"><svg width="16" height="16" viewBox="0 0 24 24" class="text-rose-400"><path fill="currentColor" d="M10 15l5.19-3L10 9z"/></svg>Watch video</a>` : ''}
+              <button id="scrollToCards" class="focus-ring inline-flex items-center gap-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-900">View in list</button>
+            </div>
+            <div class="mt-5"><details class="group rounded-lg bg-slate-900/50 border border-slate-800"><summary class="cursor-pointer list-none px-3 py-2 text-sm text-slate-300 flex items-center justify-between">Sources<span class="text-slate-400 group-open:rotate-180 transition"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="m7 10l5 5l5-5z"/></svg></span></summary><div class="px-3 pb-3"><ul class="list-disc pl-5 space-y-1 text-sm">${ev.sources?.map(s=>`<li><a href="${s.url}" target="_blank" rel="noopener noreferrer" class="text-cyan-300 hover:text-cyan-200 underline">${s.label}</a></li>`).join('')||'<li class="text-slate-400">No sources listed</li>'}</ul></div></details></div>
+          </div>
+        </div>
+      `;
+      const btn = document.getElementById('scrollToCards'); if(btn){ btn.addEventListener('click', ()=>{ cards.scrollIntoView({ behavior: 'smooth', block: 'start' }); const cardEl = document.querySelector(`[data-card-id="${ev.id}"]`); if(cardEl){ cardEl.classList.add('ring-2','ring-cyan-400/60'); setTimeout(()=>cardEl.classList.remove('ring-2','ring-cyan-400/60'),1600); } }); }
+      if(scrollInto) detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+    function renderCards(){ cards.innerHTML = ''; const data = state.filtered; data.forEach(ev=>{ const cat = categoryInfo[ev.category]?.label || ev.category; const dot = categoryInfo[ev.category]?.dot || 'bg-slate-400'; const selected = state.selectedId===ev.id; const thumb = ytThumb(ev.media) || null; const card = document.createElement('article'); card.dataset.cardId = ev.id; card.className = `rounded-xl border ${selected ? 'border-cyan-500/50' : 'border-slate-800/70'} bg-slate-900/50 p-4 transition`;
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="h-10 w-10 rounded-lg bg-slate-800/70 border border-slate-700 flex items-center justify-center">${iconForCategory(ev.category,20)}</div>
+            <div class="flex-1">
+              <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full ${dot} inline-block"></span>${cat}</span>
+                <span>•</span>
+                <span>${fmtDate(ev.date)}</span>
+                ${ev.location ? `<span>•</span><span>${ev.location}</span>` : ''}
+              </div>
+              <h4 class="mt-1 font-semibold">${ev.title}</h4>
+              <p class="mt-1 text-sm text-slate-300 line-clamp-3">${ev.summary || ''}</p>
+              <div class="mt-3 flex items-center gap-2">
+                <button class="focus-ring inline-flex items-center gap-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 px-3 py-1.5 text-xs" data-action="view" data-id="${ev.id}">View details</button>
+                ${thumb ? `<a target="_blank" rel="noopener noreferrer" href="${ev.media}" class="inline-flex items-center gap-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 px-3 py-1.5 text-xs"><span class="thumb-wrap thumb-small mr-2"><img loading="lazy" src="${thumb}" alt="thumbnail"><span class="thumb-play"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg></span></span>Open video</a>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+        card.querySelector('[data-action="view"]').addEventListener('click', ()=>{ state.selectedId = ev.id; renderTimeline(); renderDetail(true); });
+        cards.appendChild(card);
+      }); }
+
+    function navSelect(dir){ const arr = state.filtered; if(!arr.length) return; const idx = arr.findIndex(e=>e.id===state.selectedId); const next = arr[(idx+dir+arr.length)%arr.length]; state.selectedId = next.id; renderTimeline(); renderDetail(true); }
+
+    function openModal(){ modal.classList.remove('hidden'); modal.classList.add('flex'); const dateInput = eventForm.elements['date']; if(dateInput && !dateInput.value){ const today = new Date(); const iso = today.toISOString().slice(0,10); dateInput.value = iso; } }
+    function closeModalFn(){ modal.classList.add('hidden'); modal.classList.remove('flex'); }
+
+    function onAddEvent(e){ e.preventDefault(); const fd = new FormData(eventForm); const title = (fd.get('title')||'').toString().trim(); const date = (fd.get('date')||'').toString(); if(!title||!date) return; const newEvt = { id: 'u'+Math.random().toString(36).slice(2,8), title, date, location: (fd.get('location')||'').toString().trim(), category: (fd.get('category')||'reform').toString(), summary: (fd.get('summary')||'').toString().trim(), significance: (fd.get('significance')||'').toString().trim(), sources: [], media: (fd.get('media')||'').toString().trim() }; const src = (fd.get('source')||'').toString().trim(); if(src) newEvt.sources.push({ label: 'Source', url: src }); const userEvents = loadUserEvents(); userEvents.push(newEvt); saveUserEvents(userEvents); state.events.push(newEvt); state.selectedId = newEvt.id; applyFilters(); eventForm.reset(); closeModalFn(); const t = document.createElement('div'); t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-emerald-500 text-slate-900 px-4 py-2 text-sm font-semibold shadow-lg'; t.textContent = 'Event added!'; document.body.appendChild(t); setTimeout(()=>t.remove(),1400); }
+
+    function renderReferences(){ const citations = [ 'United Kingdom Parliament. (1829). Metropolitan Police Act 1829. https://www.legislation.gov.uk/ukpga/Geo4/10/44/contents', 'Boston Police Department. (n.d.). History of the BPD. https://bpdnews.com/history', 'New York Police Department. (n.d.). History of the NYPD. https://www.nyc.gov/site/nypd/about/history/history.page', 'National Archives. (2013, Jan 17). The Wickersham Commission. https://prologue.blogs.archives.gov/2013/01/17/the-wickersham-commission/', 'Oyez. (n.d.). Miranda v. Arizona, 384 U.S. 436 (1966). https://www.oyez.org/cases/1965/759', 'Oyez. (n.d.). Terry v. Ohio, 392 U.S. 1 (1968). https://www.oyez.org/cases/1967/67', 'U.S. Department of Justice, Civil Rights Division. (n.d.). Addressing police misconduct. https://www.justice.gov/crt/law-enforcement-misconduct', 'U.S. Department of Homeland Security. (n.d.). Creation of the Department of Homeland Security. https://www.dhs.gov/creation-department-homeland-security', 'Ariel, B., Farrar, W. A., & Sutherland, A. (2015). The effect of police body-worn cameras on use of force and citizens’ complaints. Journal of Quantitative Criminology, 31(3), 509–535. https://doi.org/10.1007/s10940-014-9236-3', 'U.S. Department of Justice, COPS Office. (2015). Final report of the President’s Task Force on 21st Century Policing. https://cops.usdoj.gov/pdf/taskforce/taskforce_finalreport.pdf', 'The White House. (2022, May 25). Fact sheet: Executive Order on policing. https://www.whitehouse.gov/briefing-room/statements-releases/2022/05/25/fact-sheet-president-biden-to-sign-historic-executive-order-to-advance-effective-accountable-policing-and-strengthen-public-safety/', 'U.S. Department of Justice. (2015, Mar 4). Findings in the Ferguson Police Department. https://www.justice.gov/opa/pr/justice-department-announces-findings-investigation-ferguson-police-department' ]; refsOl.innerHTML=''; citations.forEach(c=>{ const li=document.createElement('li'); li.textContent=c; refsOl.appendChild(li); }); }
+
+    async function copyCitations(){ const texts = Array.from(refsOl.querySelectorAll('li')).map(li=>li.textContent).join('\n'); try{ await navigator.clipboard.writeText(texts); copyCitationsBtn.textContent='Copied!'; setTimeout(()=>copyCitationsBtn.textContent='Copy all',1200); }catch{ alert('Select and copy the references manually.'); } }
+
+    // Provided videos (use the two links given in the brief)
+    const providedVideos = [ { id: 'pv1', url: 'https://www.youtube.com/watch?v=3vgh-r_pPxQ', label: 'Video 1' }, { id: 'pv2', url: 'https://www.youtube.com/watch?v=8jqXeW5C324', label: 'Video 2' } ];
+
+    function renderProvidedVideos(){ providedVideosWrap.innerHTML=''; providedVideos.forEach(v=>{ const thumb = ytThumb(v.url); const a = document.createElement('a'); a.href = v.url; a.target='_blank'; a.rel='noopener noreferrer'; a.className = 'inline-flex items-center gap-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 px-3 py-2'; if(thumb){ a.innerHTML = `<span class="thumb-wrap thumb-medium mr-2"><img loading="lazy" src="${thumb}" alt="${v.label}"><span class="thumb-play"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8l6 4-6 4V8z" fill="#fff"/></svg></span></span><span class="text-sm">${v.label}</span>`; } else { a.textContent = v.label; } providedVideosWrap.appendChild(a); }); }
+
+    // Initialize
+    window.addEventListener('resize', ()=>renderTimeline());
+    init();
+  </script>
+</body>
+</html>
